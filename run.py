@@ -196,7 +196,7 @@ else:
 
     pred = []
     for stock, data in stock_dict.items():
-        if stock>=2000 and stock<=2300:
+        if stock>=2300 and stock<=2600:
             if data['date'].min() <= pd.to_datetime('2018-10-31') and data['date'].max()>=pd.to_datetime('2021-05-31'):
                 try:
                     print("现在是stock",stock)
