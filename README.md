@@ -13,6 +13,7 @@
 |...|...|...|...|...|...|
 |2022-1-1|1888|0.5|0.6|0.3|...|
 |2023-5-28|1888|0.8|0.6|0.5|...|
+
 也就是说，多只股票多个特征多段时间的混合数据。我们怎么处理的？对于每一个股票，我们都把它的时间序列提取出来存放到一个字典的键值对里面。其中键就是股票id，值就是该股票的时间序列。
 
 ### 如何读取你的数据
@@ -119,3 +120,11 @@ cd timeseries_for_stocks
 python run.py
 ```
 注意到run里面去改test部分得到自己的文件夹。
+```
+@article{liu2022non,
+  title={Non-stationary Transformers: Exploring the Stationarity in Time Series Forecasting},
+  author={Liu, Yong and Wu, Haixu and Wang, Jianmin and Long, Mingsheng},
+  booktitle={Advances in Neural Information Processing Systems},
+  year={2022}
+}
+```
