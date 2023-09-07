@@ -2,7 +2,56 @@ import argparse
 import torch
 from exp.exp_main import Exp_Main
 import random
+import pandas as pd
 import numpy as np
+import pickle
+import feather
+
+# df = feather.read_dataframe('./factors.feather')
+# df['ret_next'] = df.groupby('id',group_keys =False)['ret_c2c'].shift(-1)
+# factors = [i for i in df.columns if i.endswith('_factor')]
+# factors.remove('industry_factor')
+# for column in factors:
+#     mask = ((df[column] < 1e-8)&(df[column]>0))  # 创建布尔条件掩码
+#     df[column] = np.where(mask, 0.00001, df[column])  # 将小于1e-8的数字替换为0.00001
+
+#     mask = ((df[column] > -1e-8)&(df[column]<0))  # 创建布尔条件掩码
+#     df[column] = np.where(mask, -0.00001, df[column])  # 将大于-1e-8的数字替换为-0.00001
+#     mask = (df[column].abs() > 1e40)
+#     df[column] = np.where(mask, 0.00001, df[column])
+# macros = pd.read_csv('./Macro_factor.csv')
+# df['date'] = pd.to_datetime(df['date'])
+# macros['date'] = pd.to_datetime(macros['date'])
+# df = pd.merge(df,macros,on = 'date',how = 'left')
+# df = df[df['date']<='2023-03-31']
+# df.replace([np.inf, -np.inf], 0.00001, inplace=True)
+# df.fillna(0, inplace=True)
+# grouped = df.groupby('id')
+# stock_dict = {}
+# id_mapping = {}
+# i = 1
+# for stock, group in grouped:
+#     id_mapping[i] = stock
+#     stock_dict[i] = group
+#     del stock_dict[i]['id']
+#     del stock_dict[i]['industry_factor']
+#     i+=1
+# with open('id_mapping.pkl', 'wb') as f:
+#     pickle.dump(id_mapping, f)
+
+df = feather.read_dataframe('../daily.feather')
+df = df[df['date']>='2000-01-01']
+df.replace([np.inf, -np.inf], 0.00001, inplace=True)
+df.fillna(0, inplace=True)
+
+df['date'] = pd.to_datetime(df['date'])
+grouped = df.groupby('id')
+stock_dict = {}
+
+for stock, group in grouped:
+    stock_dict[stock] = group
+    del stock_dict[stock]['id']
+    del stock_dict[stock]['Markettype']
 
 parser = argparse.ArgumentParser(description='Non-stationary Transformers for Time Series Forecasting')
 
@@ -13,13 +62,11 @@ parser.add_argument('--model', type=str, required=True, default='Transformer',
                     help='model name, options: [ns_Transformer, Transformer]')
 
 # data loader
-parser.add_argument('--data', type=str, required=True, default='ETTh2', help='dataset type')
-parser.add_argument('--root_path', type=str, default='./data/ETT/', help='root path of the data file')
-parser.add_argument('--data_path', type=str, default='ETTh2.csv', help='data file')
-parser.add_argument('--features', type=str, default='M',
+parser.add_argument('--data', type=str, required=True, default='custom', help='dataset type')
+parser.add_argument('--features', type=str, default='MS',
                     help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
-parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
-parser.add_argument('--freq', type=str, default='h',
+parser.add_argument('--target', type=str, default='ret', help='target feature in S or MS task')
+parser.add_argument('--freq', type=str, default='d',
                     help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 
@@ -43,7 +90,7 @@ parser.add_argument('--distil', action='store_false',
                     help='whether to use distilling in encoder, using this argument means not using distilling',
                     default=True)
 parser.add_argument('--dropout', type=float, default=0.05, help='dropout')
-parser.add_argument('--embed', type=str, default='timeF',
+parser.add_argument('--embed', type=str, default='fixed',
                     help='time features encoding, options:[timeF, fixed, learned]')
 parser.add_argument('--activation', type=str, default='gelu', help='activation')
 parser.add_argument('--output_attention', action='store_true', help='whether to output attention in encoder')
@@ -52,10 +99,10 @@ parser.add_argument('--do_predict', action='store_true', help='whether to predic
 # optimization
 parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
 parser.add_argument('--itr', type=int, default=2, help='experiments times')
-parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
+parser.add_argument('--train_epochs', type=int, default=20, help='train epochs')
 parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
 parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
-parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
+parser.add_argument('--learning_rate', type=float, default=0.00001, help='optimizer learning rate')
 parser.add_argument('--des', type=str, default='test', help='exp description')
 parser.add_argument('--loss', type=str, default='mse', help='loss function')
 parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
@@ -66,7 +113,7 @@ parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
 parser.add_argument('--gpu', type=int, default=0, help='gpu')
 parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
 parser.add_argument('--devices', type=str, default='0,1,2,3', help='device ids of multile gpus')
-parser.add_argument('--seed', type=int, default=2021, help='random seed')
+parser.add_argument('--seed', type=int, default=2023, help='random seed')
 
 # de-stationary projector params
 parser.add_argument('--p_hidden_dims', type=int, nargs='+', default=[128, 128], help='hidden layer dimensions of projector (List)')
@@ -116,18 +163,18 @@ if args.is_training:
             args.distil,
             args.des, ii)
 
-        exp = Exp(args)  # set experiments
-        print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
-        exp.train(setting)
-
-        print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-        exp.test(setting)
-
-        if args.do_predict:
-            print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-            exp.predict(setting, True)
-
-        torch.cuda.empty_cache()
+        for stock, data in stock_dict.items():
+            if stock>=1980 and stock<=5000:
+                if data['date'].min() <= pd.to_datetime('2018-10-31') and data['date'].max()>=pd.to_datetime('2021-05-31'):
+                    try:
+                        print("现在是stock",stock)
+                        exp = Exp(args,stock,data)
+                        print('>>>>>>>training : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+                        exp.train(setting)
+                        del exp
+                        torch.cuda.empty_cache()
+                    except Exception as e:
+                        print(f"Error message: {str(e)}")
 else:
     ii = 0
     setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(args.model_id,
@@ -147,7 +194,28 @@ else:
                                                                                                   args.distil,
                                                                                                   args.des, ii)
 
-    exp = Exp(args)  # set experiments
-    print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-    exp.test(setting, test=1)
-    torch.cuda.empty_cache()
+    pred = []
+    for stock, data in stock_dict.items():
+        if stock>=2000 and stock<=2300:
+            if data['date'].min() <= pd.to_datetime('2018-10-31') and data['date'].max()>=pd.to_datetime('2021-05-31'):
+                try:
+                    print("现在是stock",stock)
+                    exp = Exp(args,stock,data)
+                    print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+                    tempt = exp.test(setting, test=1)
+                    pred.append(tempt)
+                    if args.do_predict:
+                        print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+                        exp.predict(setting, True)
+                    del exp
+                    torch.cuda.empty_cache()
+                except Exception as e:
+                    print(f"Error message: {str(e)}")
+
+    try:
+        pred = np.concatenate(pred, axis=0)
+        pred = pred.reshape(-1, pred.shape[-1])
+        pred = pd.DataFrame(pred, columns=['pred', 'year', 'month', 'day','id'])
+        feather.write_dataframe(pred, f'./pred/pred_2000_to_2300.feather')
+    except Exception as e:
+        print(f"Error message: {str(e)}")

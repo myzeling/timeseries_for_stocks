@@ -1,23 +1,23 @@
 python -u run.py \
-  --is_training 1 \
-  --root_path ./dataset/electricity/ \
-  --data_path electricity.csv \
-  --model_id ECL_96_96 \
+  --is_training 0 \
+  --model_id Daily_trans_250_120_5 \
   --model Transformer \
   --data custom \
-  --features M \
-  --seq_len 96 \
-  --label_len 48 \
-  --pred_len 96 \
+  --seq_len 250 \
+  --label_len 120 \
+  --pred_len 5 \
   --e_layers 2 \
   --d_layers 1 \
   --factor 3 \
-  --gpu 4 \
-  --enc_in 321 \
-  --dec_in 321 \
-  --c_out 321 \
+  --gpu 0 \
+  --enc_in 13 \
+  --dec_in 13 \
+  --c_out 1 \
   --des 'Exp' \
-  --itr 1 &
+  --itr 1 \
+  --features 'MS'\
+  --batch_size 256\
+  --train_epoch 10&
 
 python -u run.py \
   --is_training 1 \

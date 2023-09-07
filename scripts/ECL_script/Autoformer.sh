@@ -1,5 +1,5 @@
 python -u run.py \
-  --is_training 1 \
+  --is_training 0 \
   --root_path ./dataset/electricity/ \
   --data_path electricity.csv \
   --model_id ECL_96_96 \
